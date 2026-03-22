@@ -108,32 +108,46 @@ export default function DashboardPage() {
   const pendingNotes = followUps.filter((f) => f.status === "pending")
   const addressedNotes = followUps.filter((f) => f.status === "addressed").slice(0, 2)
 
-  useEffect(() => {
-    Promise.all([
+  function loadAll() {
+    return Promise.all([
       getContacts().then((res) => {
-        setContacts(res.data || [])
+        const next = res.data || []
+        setContacts((prev) => prev.length !== next.length || prev.some((p, i) => p.id !== next[i]?.id) ? next : prev)
       }).catch(() => {}),
       getSummaries(1).then((res) => {
         const latest = res.data?.[0]
         if (latest?.items) {
-          setInsights(
-            latest.items.map((item: DailySummaryItem, i: number) => ({
+          setInsights((prev) => {
+            if (prev.length === latest.items.length && prev.every((p, i) => p.title === latest.items[i]?.title)) return prev
+            return latest.items.map((item: DailySummaryItem, i: number) => ({
               id: String(i),
               title: item.title,
               icon: iconMap[item.icon] || Activity,
               color: hexToTailwindBucket(item.color),
               summary: item.summary,
             }))
-          )
+          })
         }
       }).catch(() => {}),
       listSessions().then((res) => {
-        setSessions((res.data || []).filter((s) => s.status === "completed").slice(0, 3))
+        const next = (res.data || []).filter((s) => s.status === "completed").slice(0, 3)
+        setSessions((prev) => prev.length !== next.length || prev.some((p, i) => p.id !== next[i]?.id) ? next : prev)
       }).catch(() => {}),
       getFollowUps().then((res) => {
-        setFollowUps(res.data || [])
+        const next = res.data || []
+        setFollowUps((prev) => {
+          if (prev.length !== next.length) return next
+          if (prev.some((p, i) => p.id !== next[i]?.id || p.status !== next[i]?.status)) return next
+          return prev
+        })
       }).catch(() => {}),
-    ]).finally(() => setLoading(false))
+    ])
+  }
+
+  useEffect(() => {
+    loadAll().finally(() => setLoading(false))
+    const interval = setInterval(loadAll, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   async function addNote() {
