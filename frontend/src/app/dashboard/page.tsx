@@ -102,6 +102,7 @@ export default function DashboardPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const [newNote, setNewNote] = useState("")
 
   const pendingNotes = followUps.filter((f) => f.status === "pending")
@@ -157,7 +158,8 @@ export default function DashboardPage() {
     setSending(true)
     try {
       await createSession(contactId)
-      alert("Session created and SMS sent!")
+      setToast("Session created and SMS sent!")
+      setTimeout(() => setToast(null), 3000)
     } catch {}
     setSending(false)
   }
@@ -343,6 +345,21 @@ export default function DashboardPage() {
         </section>
 
       </PageMain>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-500 text-base backdrop-blur-lg"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
