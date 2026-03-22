@@ -238,16 +238,16 @@ router.post("/:id/analyze", async (req: Request, res: Response, next: NextFuncti
       throw new AppError(400, "Session has no transcript to analyze");
     }
 
-    // Upload transcript to S3 and fetch recording (if it exists) in parallel
+    // Upload transcript to S3 and fetch recording in parallel
     const [s3Key, videoBuffer] = await Promise.all([
       s3Service.uploadTranscript(id, session.transcriptRaw),
       session.recordingKey ? s3Service.getRecording(session.recordingKey) : Promise.resolve(null),
     ]);
 
-    // Run combined transcript + video analysis in parallel via Gemini
+    // Run transcript + video symptom analysis via Gemini
     const result = await geminiService.analyzeCombined(session.transcriptRaw, videoBuffer);
 
-    // Store analysis with both transcript and visual results
+    // Store analysis
     const analysis = await analysisRepository.create({
       sessionId: id,
       title: result.title,
@@ -255,9 +255,6 @@ router.post("/:id/analyze", async (req: Request, res: Response, next: NextFuncti
       moodScore: result.moodScore,
       concerns: result.concerns,
       urgencyLevel: result.urgencyLevel,
-      visualSummary: result.visualSummary,
-      visualConcerns: result.visualConcerns,
-      appearanceScore: result.appearanceScore,
       s3Key,
     });
 

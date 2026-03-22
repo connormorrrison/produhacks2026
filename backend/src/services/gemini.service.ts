@@ -90,7 +90,7 @@ export const geminiService = {
     conversations.delete(sessionId);
   },
 
-  async analyzeVideo(videoBuffer: Buffer): Promise<string> {
+  async analyzeVideo(videoBuffer: Buffer): Promise<string[]> {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -104,70 +104,56 @@ export const geminiService = {
       const result = await model.generateContent([
         videoPart,
         {
-          text: `You are a medical observation assistant. Analyze this video recording of an elderly person during a health check-in call.
+          text: `You are a medical symptom detection assistant. Watch this video of a person during a health check-in call.
 
-Observe and report on:
-- Their general appearance (alert, tired, pale, etc.)
-- Facial expressions and emotional state
-- Any visible signs of distress, pain, or discomfort
-- Mobility or posture concerns if visible
-- Overall engagement level during the conversation
+Look ONLY for visible signs of medical symptoms or health concerns, such as:
+- Tremors, shaking, or involuntary movements
+- Labored or irregular breathing
+- Signs of pain (wincing, guarding, grimacing)
+- Pallor, flushing, or skin discoloration
+- Swelling or inflammation
+- Difficulty with mobility or coordination
+- Signs of fatigue or lethargy
+- Confusion or disorientation
 
-Return a JSON object with exactly these fields:
-- "visualSummary": 2-3 sentences describing what you observe
-- "visualConcerns": array of strings listing any concerns spotted visually (empty if none)
-- "appearanceScore": number 1-10 (1=very concerning, 10=healthy appearance)
+Do NOT describe the person's general appearance, clothing, age, or setup. Only report medically relevant symptoms you can observe.
 
-IMPORTANT: Return ONLY the JSON object, no other text.`,
+Return ONLY a JSON array of strings — each string is a short symptom observation (e.g. "Visible tremor in left hand", "Wincing when shifting position"). Return an empty array [] if no symptoms are observed.`,
         },
       ]);
 
-      return result.response.text();
+      const text = result.response.text();
+      const cleaned = text
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .replace(/[\u201C\u201D]/g, '"')
+        .trim();
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed.filter((s: any) => typeof s === "string") : [];
     } catch (error) {
       console.error("[Gemini] Video analysis failed:", error);
-      return JSON.stringify({
-        visualSummary: "Video analysis unavailable",
-        visualConcerns: [],
-        appearanceScore: null,
-      });
+      return [];
     }
   },
 
   async analyzeCombined(
     transcript: unknown,
     videoBuffer: Buffer | null
-  ): Promise<AnalysisResult & { visualSummary?: string; visualConcerns?: string[]; appearanceScore?: number | null }> {
-    // Run transcript and video analysis in parallel
-    const transcriptPromise = this.analyzeTranscript(transcript);
-    const videoPromise = videoBuffer
-      ? this.analyzeVideo(videoBuffer)
-      : Promise.resolve(null);
+  ): Promise<AnalysisResult> {
+    const [transcriptResult, videoSymptoms] = await Promise.all([
+      this.analyzeTranscript(transcript),
+      videoBuffer ? this.analyzeVideo(videoBuffer) : Promise.resolve([]),
+    ]);
 
-    const [transcriptResult, videoResultRaw] = await Promise.all([transcriptPromise, videoPromise]);
-
-    // Parse video result
-    let videoResult = { visualSummary: undefined as string | undefined, visualConcerns: [] as string[], appearanceScore: null as number | null };
-    if (videoResultRaw) {
-      try {
-        const cleaned = videoResultRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        videoResult = JSON.parse(cleaned);
-      } catch {
-        // Use defaults
-      }
-    }
-
-    // Merge: escalate urgency if video reveals concerns
+    // Merge video symptoms into concerns
     const allConcerns = [
       ...transcriptResult.concerns,
-      ...(videoResult.visualConcerns || []).map((c: string) => `[visual] ${c}`),
+      ...videoSymptoms,
     ];
 
-    // Escalate urgency if video shows serious concerns
+    // Escalate if video found symptoms but transcript said normal
     let finalUrgency = transcriptResult.urgencyLevel;
-    if (
-      videoResult.visualConcerns?.length > 0 &&
-      finalUrgency === "normal"
-    ) {
+    if (videoSymptoms.length > 0 && finalUrgency === "normal") {
       finalUrgency = "elevated";
     }
 
@@ -175,12 +161,6 @@ IMPORTANT: Return ONLY the JSON object, no other text.`,
       ...transcriptResult,
       concerns: allConcerns,
       urgencyLevel: finalUrgency,
-      summary: videoResult.visualSummary
-        ? `${transcriptResult.summary} Visual observation: ${videoResult.visualSummary}`
-        : transcriptResult.summary,
-      visualSummary: videoResult.visualSummary,
-      visualConcerns: videoResult.visualConcerns || [],
-      appearanceScore: videoResult.appearanceScore,
     };
   },
 

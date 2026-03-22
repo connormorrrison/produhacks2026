@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Play, TrendingUp, Moon, Pill, Users, Activity, Heart, AlertTriangle,
   Smile, Thermometer, Brain, Apple, Footprints, Eye, Clock, ShieldCheck, ShieldAlert,
-  Circle, CircleCheck, Plus, X, type LucideIcon,
+  Circle, CircleCheck, Plus, X, Send, type LucideIcon,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { CustomButton2 } from "@/components/ui/CustomButton2"
@@ -14,9 +14,11 @@ import { Reveal } from "@/components/ui/Reveal"
 import { AppNav } from "@/components/ui/AppNav"
 import { PageMain } from "@/components/ui/PageMain"
 import { cn } from "@/lib/utils"
+import { CustomButton1 } from "@/components/ui/CustomButton1"
 import {
   getSummaries, listSessions, getFollowUps, createFollowUp, deleteFollowUp,
-  type DailySummaryItem, type SessionWithContact, type FollowUp,
+  getContacts, createSession,
+  type DailySummaryItem, type SessionWithContact, type FollowUp, type Contact,
 } from "@/lib/api"
 
 // ── Icon + color mapping from Gemini output ──────────────
@@ -97,7 +99,9 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<Insight[]>([])
   const [sessions, setSessions] = useState<SessionWithContact[]>([])
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
   const [newNote, setNewNote] = useState("")
 
   const pendingNotes = followUps.filter((f) => f.status === "pending")
@@ -105,6 +109,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
+      getContacts().then((res) => {
+        setContacts(res.data || [])
+      }).catch(() => {}),
       getSummaries(1).then((res) => {
         const latest = res.data?.[0]
         if (latest?.items) {
@@ -146,11 +153,35 @@ export default function DashboardPage() {
     } catch {}
   }
 
+  async function handleNewSession(contactId: string) {
+    setSending(true)
+    try {
+      await createSession(contactId)
+      alert("Session created and SMS sent!")
+    } catch {}
+    setSending(false)
+  }
+
   return (
     <div className="min-h-screen">
       <AppNav />
 
       <PageMain>
+
+        {/* ── New Session button ── */}
+        {contacts.length > 0 && (
+          <Reveal>
+            <div className="flex items-center justify-end mb-2">
+              <CustomButton1
+                onClick={() => handleNewSession(contacts[0].id)}
+                disabled={sending}
+              >
+                <Send className="h-4 w-4" />
+                {sending ? "Sending..." : "New Session"}
+              </CustomButton1>
+            </div>
+          </Reveal>
+        )}
 
         {/* ── While you were gone ── */}
         <section>
