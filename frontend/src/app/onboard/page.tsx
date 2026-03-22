@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Check, Plus, X } from "lucide-react"
 import { CustomButton1 } from "@/components/ui/CustomButton1"
@@ -8,6 +8,12 @@ import { CustomButton2 } from "@/components/ui/CustomButton2"
 import { CustomInput } from "@/components/ui/CustomInput"
 import { Reveal } from "@/components/ui/Reveal"
 import { CustomProgress } from "@/components/ui/CustomProgress"
+import {
+  getEmergencyContacts,
+  createEmergencyContact,
+  deleteEmergencyContact,
+  type EmergencyContact,
+} from "@/lib/api"
 
 const TOTAL_STEPS = 8
 
@@ -60,9 +66,22 @@ export default function OnboardPage() {
   const [medical, setMedical] = useState("")
   const [mood, setMood] = useState("")
   const [symptoms, setSymptoms] = useState("")
+  const [savedContacts, setSavedContacts] = useState<EmergencyContact[]>([])
   const [trustedContacts, setTrustedContacts] = useState([{ name: "", phone: "" }])
 
   const MAX_CONTACTS = 3
+
+  useEffect(() => {
+    getEmergencyContacts()
+      .then((res) => {
+        const existing = res.data || []
+        setSavedContacts(existing)
+        if (existing.length > 0) {
+          setTrustedContacts(existing.map((c) => ({ name: c.name, phone: c.phone })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   function updateContact(index: number, field: "name" | "phone", value: string) {
     setTrustedContacts((prev) =>
@@ -77,6 +96,11 @@ export default function OnboardPage() {
   }
 
   function removeContact(index: number) {
+    const contact = savedContacts[index]
+    if (contact) {
+      deleteEmergencyContact(contact.id).catch(() => {})
+      setSavedContacts((prev) => prev.filter((_, i) => i !== index))
+    }
     setTrustedContacts((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -362,7 +386,16 @@ export default function OnboardPage() {
             </div>
             <div className="flex gap-3 pt-6">
               <CustomButton2 className="flex-1" onClick={back}>Back</CustomButton2>
-              <CustomButton1 className="flex-1" onClick={next}>
+              <CustomButton1 className="flex-1" onClick={async () => {
+                // Save new contacts that aren't already in the DB
+                const existingPhones = new Set(savedContacts.map((c) => c.phone))
+                for (const c of trustedContacts) {
+                  if (c.name.trim() && c.phone.trim() && !existingPhones.has(c.phone.trim())) {
+                    await createEmergencyContact(c.name.trim(), c.phone.trim()).catch(() => {})
+                  }
+                }
+                next()
+              }}>
                 Finish
               </CustomButton1>
             </div>
