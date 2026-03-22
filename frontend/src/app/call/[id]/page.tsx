@@ -203,7 +203,11 @@ export default function CallPage() {
       roomRef.current = room
       room.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Video && videoRef.current) track.attach(videoRef.current)
-        if (track.kind === Track.Kind.Audio && audioRef.current) track.attach(audioRef.current)
+        if (track.kind === Track.Kind.Audio) {
+          const el = track.attach()
+          el.volume = 1
+          document.body.appendChild(el)
+        }
       })
       room.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
         if (topic === AGENT_RESPONSE_TOPIC) handleServerEvent(payload)

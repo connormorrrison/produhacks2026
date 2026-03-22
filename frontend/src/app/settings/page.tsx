@@ -10,16 +10,9 @@ import { CustomInput } from "@/components/ui/CustomInput"
 import { CustomCard, CustomCardHeader, CustomCardTitle, CustomCardContent, CustomCardFooter } from "@/components/ui/CustomCard"
 import { Reveal } from "@/components/ui/Reveal"
 import {
-  getContacts,
-  getContact,
-  createContact as apiCreateContact,
-  createSession,
-  analyzeSession,
   getEmergencyContacts,
   createEmergencyContact,
   deleteEmergencyContact,
-  type Contact,
-  type ContactWithSessions,
   type EmergencyContact,
 } from "@/lib/api"
 
@@ -97,76 +90,6 @@ export default function SettingsPage() {
     } catch {}
   }
 
-  // Session controls (backend-connected)
-  const [apiContacts, setApiContacts] = useState<Contact[]>([])
-  const [selectedContact, setSelectedContact] = useState<ContactWithSessions | null>(null)
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    loadApiContacts()
-  }, [])
-
-  async function loadApiContacts() {
-    try {
-      const res = await getContacts()
-      setApiContacts(res.data || [])
-    } catch (e: any) {
-      setError(e.message)
-    }
-  }
-
-  async function handleCreateContact(e: React.FormEvent) {
-    e.preventDefault()
-    setError("")
-    try {
-      await apiCreateContact({ name, phone, caretakerId: "caretaker-001" })
-      setName("")
-      setPhone("")
-      await loadApiContacts()
-    } catch (e: any) {
-      setError(e.message)
-    }
-  }
-
-  async function handleViewContact(id: string) {
-    try {
-      const res = await getContact(id)
-      setSelectedContact(res.data)
-    } catch (e: any) {
-      setError(e.message)
-    }
-  }
-
-  async function handleStartSession(contactId: string) {
-    setError("")
-    setLoading(true)
-    try {
-      await createSession(contactId)
-      alert("Session created and SMS sent!")
-      await handleViewContact(contactId)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleAnalyze(sessionId: string, contactId: string) {
-    setError("")
-    setLoading(true)
-    try {
-      await analyzeSession(sessionId)
-      alert("Analysis complete!")
-      await handleViewContact(contactId)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen">
@@ -176,15 +99,6 @@ export default function SettingsPage() {
         <Reveal>
           <h1 className="mb-6 text-2xl font-normal">Settings</h1>
         </Reveal>
-
-        {error && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-base text-red-400">
-            {error}
-            <button onClick={() => setError("")} className="ml-3 text-red-400 hover:text-red-300">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
 
         <div className="flex flex-col gap-6">
           {/* Profile */}
