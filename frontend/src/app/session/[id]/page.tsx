@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/CustomCard"
 import { Reveal } from "@/components/ui/Reveal"
 
-const BACKEND_URL = "http://localhost:3000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000"
 
 type SessionData = {
   id: string
