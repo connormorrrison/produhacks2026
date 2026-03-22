@@ -175,7 +175,7 @@ export default function DashboardPage() {
               )
             })}
             {!loading && insights.length === 0 && (
-              <p className="text-muted-foreground text-sm col-span-full">No insights yet. Generate a daily summary from Settings.</p>
+              <p className="text-muted-foreground text-base col-span-full">No insights yet. Generate a daily summary from Settings.</p>
             )}
           </div>
         </section>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
               )
             })}
             {!loading && sessions.length === 0 && (
-              <p className="text-muted-foreground text-sm">No completed sessions yet.</p>
+              <p className="text-muted-foreground text-base">No completed sessions yet.</p>
             )}
           </div>
         </section>

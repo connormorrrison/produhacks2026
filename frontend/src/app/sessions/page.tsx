@@ -38,13 +38,30 @@ function formatDuration(start: string | null | undefined, end: string | null | u
   return `${mins} min`
 }
 
+const MOCK_SESSION: SessionWithContact = {
+  id: "mock-session-1",
+  status: "completed",
+  startedAt: "2026-03-21T10:15:00Z",
+  endedAt: "2026-03-21T10:25:00Z",
+  contact: { id: "mock-contact-1", name: "Margaret Smith", phone: "+1 (555) 123-4567", caretakerId: "c1", createdAt: "" },
+  analysis: {
+    urgencyLevel: "normal",
+    moodScore: 8,
+    summary: "Margaret was in good spirits today. She mentioned enjoying her morning walk and felt well-rested. No concerns flagged.",
+    concerns: [],
+  },
+}
+
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionWithContact[]>([])
+  const [sessions, setSessions] = useState<SessionWithContact[]>([MOCK_SESSION])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     listSessions()
-      .then((res) => setSessions((res.data || []).filter((s) => s.status === "completed")))
+      .then((res) => {
+        const real = (res.data || []).filter((s) => s.status === "completed")
+        setSessions([MOCK_SESSION, ...real])
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -59,7 +76,7 @@ export default function SessionsPage() {
           <p className="text-base text-muted-foreground">All past check-in recordings across your contacts.</p>
         </Reveal>
 
-        {loading && <p className="text-muted-foreground text-sm">Loading...</p>}
+        {loading && <p className="text-muted-foreground text-base">Loading...</p>}
 
         <Reveal delay={0.05}>
           <div className="flex flex-col gap-3">
@@ -75,12 +92,17 @@ export default function SessionsPage() {
                       <div className="min-w-0">
                         <p className="text-base">{title.length > 80 ? title.slice(0, 80) + "..." : title}</p>
                         <p className="text-base text-muted-foreground mt-0.5">
-                          {formatDate(session.startedAt)} · {formatTime(session.startedAt)} · {formatDuration(session.startedAt, session.endedAt)} · {session.contact?.name || "Unknown"}
+                          {formatDate(session.startedAt)} · {formatTime(session.startedAt)} · {formatDuration(session.startedAt, session.endedAt)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <p className="text-base text-muted-foreground">Mood <span className="text-foreground">{mood}/10</span></p>
+                      <div className="text-right">
+                        <p className="text-base text-muted-foreground">Mood <span className="text-foreground">{mood}/10</span></p>
+                        <p className="text-base text-muted-foreground">Urgency <span className={`capitalize ${
+                          urgency === "emergency" ? "text-red-500" : urgency === "elevated" ? "text-amber-500" : "text-emerald-500"
+                        }`}>{urgency}</span></p>
+                      </div>
                       <Play className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -88,7 +110,7 @@ export default function SessionsPage() {
               )
             })}
             {!loading && sessions.length === 0 && (
-              <p className="text-muted-foreground text-sm">No completed sessions yet.</p>
+              <p className="text-muted-foreground text-base">No completed sessions yet.</p>
             )}
           </div>
         </Reveal>

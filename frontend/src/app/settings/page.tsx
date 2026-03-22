@@ -178,7 +178,7 @@ export default function SettingsPage() {
         </Reveal>
 
         {error && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-base text-red-400">
             {error}
             <button onClick={() => setError("")} className="ml-3 text-red-400 hover:text-red-300">
               <X className="h-4 w-4" />
